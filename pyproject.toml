@@ -1,7 +1,7 @@
 [project]
 name = "cad"
 version = "0.1.0"
-description = "Add your description here"
+description = "CAD Practice Application"
 readme = "README.md"
 authors = [
     { name = "Smile", email = "156634569+smileBlueRose@users.noreply.github.com" }
@@ -15,7 +15,3 @@ dependencies = [
 
 [project.scripts]
 cad = "cad:main"
-
-[build-system]
-requires = ["uv_build>=0.12.19,<0.13.0"]
-build-backend = "uv_build"
