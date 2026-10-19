@@ -1,12 +1,23 @@
+import json
+import os
+import socket
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from functools import lru_cache
-import socket
 
+import boto3
 import httpx
+import psycopg
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
+from psycopg.rows import dict_row
+from pydantic import BaseModel
 
-app = FastAPI(title="Cloud Practice App")
+DB_HOST = os.environ["DB_HOST"]
+DB_PORT = int(os.environ.get("DB_PORT", "5432"))
+DB_NAME = os.environ["DB_NAME"]
+DB_SECRET_ARN = os.environ["DB_SECRET_ARN"]
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 METADATA_URL = "http://169.254.169.254/latest"
 METADATA_FIELDS = {
@@ -15,6 +26,68 @@ METADATA_FIELDS = {
     "availability_zone": "placement/availability-zone",
     "private_ip": "local-ipv4",
 }
+
+
+class BookIn(BaseModel):
+    title: str
+    author: str
+    year: int | None = None
+
+
+class Book(BookIn):
+    id: int
+    created_at: datetime
+
+
+@lru_cache
+def get_db_credentials() -> dict:
+    client = boto3.client("secretsmanager", region_name=AWS_REGION)
+    secret = client.get_secret_value(SecretId=DB_SECRET_ARN)
+    return json.loads(secret["SecretString"])
+
+
+def connect() -> psycopg.Connection:
+    for attempt in range(2):
+        credentials = get_db_credentials()
+        try:
+            return psycopg.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                dbname=DB_NAME,
+                user=credentials["username"],
+                password=credentials["password"],
+                sslmode="require",
+                connect_timeout=5,
+                row_factory=dict_row,
+            )
+        except psycopg.OperationalError:
+            if attempt == 1:
+                raise
+            get_db_credentials.cache_clear()
+
+
+def init_db() -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS books (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                author TEXT NOT NULL,
+                year INTEGER,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+            """
+        )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="Cloud Practice App", lifespan=lifespan)
 
 
 @lru_cache
@@ -55,6 +128,13 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/health/db")
+def health_db():
+    with connect() as conn:
+        row = conn.execute("SELECT version() AS version, inet_server_addr() AS server_ip").fetchone()
+    return {"status": "ok", "db_host": DB_HOST, **row}
+
+
 @app.get("/client")
 def client_info(request: Request):
     return {
@@ -71,6 +151,50 @@ def client_info(request: Request):
         "received_at": datetime.now(timezone.utc).isoformat(),
         "served_by": get_instance_metadata()["instance_id"],
     }
+
+
+@app.post("/books", response_model=Book, status_code=201)
+def create_book(book: BookIn):
+    with connect() as conn:
+        return conn.execute(
+            "INSERT INTO books (title, author, year) VALUES (%s, %s, %s) RETURNING *",
+            (book.title, book.author, book.year),
+        ).fetchone()
+
+
+@app.get("/books", response_model=list[Book])
+def list_books():
+    with connect() as conn:
+        return conn.execute("SELECT * FROM books ORDER BY id").fetchall()
+
+
+@app.get("/books/{book_id}", response_model=Book)
+def get_book(book_id: int):
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM books WHERE id = %s", (book_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return row
+
+
+@app.put("/books/{book_id}", response_model=Book)
+def update_book(book_id: int, book: BookIn):
+    with connect() as conn:
+        row = conn.execute(
+            "UPDATE books SET title = %s, author = %s, year = %s WHERE id = %s RETURNING *",
+            (book.title, book.author, book.year, book_id),
+        ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return row
+
+
+@app.delete("/books/{book_id}", status_code=204)
+def delete_book(book_id: int):
+    with connect() as conn:
+        deleted = conn.execute("DELETE FROM books WHERE id = %s", (book_id,)).rowcount
+    if deleted == 0:
+        raise HTTPException(status_code=404, detail="Book not found")
 
 
 if __name__ == "__main__":
