@@ -4,12 +4,12 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-WorkingDirectory=/opt/app
+WorkingDirectory=/opt/cad-sis2/app
 Environment=HOME=/root
-EnvironmentFile=/etc/cloud-app.env
+EnvironmentFile=/etc/cad-sis2.env
 ExecStart=/usr/local/bin/uv run --frozen main.py
 Restart=always
-RestartSec=3
+RestartSec=30
 
 [Install]
 WantedBy=multi-user.target
