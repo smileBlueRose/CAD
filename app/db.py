@@ -29,7 +29,8 @@ SCHEMA = [
         total_copies     INTEGER NOT NULL DEFAULT 1 CHECK (total_copies >= 0),
         available_copies INTEGER NOT NULL DEFAULT 1
             CHECK (available_copies >= 0 AND available_copies <= total_copies),
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        cover_url TEXT
     )
     """,
     """

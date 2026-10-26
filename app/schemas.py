@@ -25,6 +25,7 @@ class Book(BookIn):
     id: int
     available_copies: int
     created_at: datetime
+    cover_url: str | None
 
 
 class MemberIn(BaseModel):
