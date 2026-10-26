@@ -1,25 +1,23 @@
 [project]
 name = "cad"
 version = "0.1.0"
-description = "CAD Practice Application"
+description = "CAD — App"
 readme = "README.md"
 authors = [
     { name = "Smile", email = "156634569+smileBlueRose@users.noreply.github.com" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "boto3>=1.43.115",
     "boto3-stubs~=1.43.115",
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
     "loguru>=0.7.3",
-    "psycopg>=3.3.6",
+    "psycopg[binary]>=3.3.6",
+    "pydantic[email]>=2.13.5",
     "python-dotenv>=1.2.4",
     "uvicorn>=0.54.0",
 ]
-
-[project.scripts]
-cad = "cad:main"
 
 [dependency-groups]
 dev = [

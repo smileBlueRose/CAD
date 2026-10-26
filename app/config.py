@@ -18,8 +18,8 @@ class Settings:
 
 
 settings = Settings(
-    host="0.0.0.0",
-    port=8000,
+    host=os.environ.get("HOST", "0.0.0.0"),
+    port=int(os.environ.get("PORT", 8000)),
     db_host=os.environ["DB_HOST"],
     db_port=int(os.environ.get("DB_PORT", "5432")),
     db_name=os.environ["DB_NAME"],
