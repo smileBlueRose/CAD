@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CAD Library</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        form {
+            display: flex;
+            gap: .5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        input, select, button {
+            padding: .4rem .6rem;
+            font-size: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border-bottom: 1px solid #ddd;
+            padding: .5rem;
+            text-align: left;
+        }
+
+        #error {
+            color: #c00;
+            min-height: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+<h1>CAD Library</h1>
+<p id="error"></p>
+
+<h2>Authors</h2>
+<form id="author-form">
+    <input name="name" placeholder="Name" required>
+    <input name="country" placeholder="Country">
+    <button type="submit">Add author</button>
+</form>
+
+<h2>Books</h2>
+<form id="book-form">
+    <input name="title" placeholder="Title" required>
+    <select name="author_id" id="author-select" required></select>
+    <input name="year" type="number" placeholder="Year" min="0" max="2100">
+    <input name="total_copies" type="number" placeholder="Copies" min="0" value="1">
+    <button type="submit">Add book</button>
+</form>
+
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Title</th>
+        <th>Author</th>
+        <th>Year</th>
+        <th>Available</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody id="books"></tbody>
+</table>
+
+<script>
+    const API_URL = "https://YOUR-API-ID.execute-api.us-east-1.amazonaws.com/prod";
+
+    const errorBox = document.getElementById("error");
+    let authors = [];
+
+    async function api(path, options = {}) {
+        const response = await fetch(API_URL + path, {
+            headers: {"Content-Type": "application/json"},
+            ...options,
+        });
+        if (!response.ok) {
+            const body = await response.json().catch(() => ({}));
+            throw new Error(body.detail ? JSON.stringify(body.detail) : response.statusText);
+        }
+        return response.status === 204 ? null : response.json();
+    }
+
+    function showError(error) {
+        errorBox.textContent = error ? error.message : "";
+    }
+
+    async function loadAuthors() {
+        authors = await api("/authors?limit=100");
+        const select = document.getElementById("author-select");
+        select.innerHTML = authors
+            .map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`)
+            .join("");
+    }
+
+    async function loadBooks() {
+        const books = await api("/books?limit=100");
+        const names = Object.fromEntries(authors.map(a => [a.id, a.name]));
+        document.getElementById("books").innerHTML = books.map(b => `
+        <tr>
+          <td>${b.id}</td>
+          <td>${escapeHtml(b.title)}</td>
+          <td>${escapeHtml(names[b.author_id] ?? String(b.author_id))}</td>
+          <td>${b.year ?? ""}</td>
+          <td>${b.available_copies} / ${b.total_copies}</td>
+          <td><button data-id="${b.id}" class="delete">Delete</button></td>
+        </tr>`).join("");
+    }
+
+    function escapeHtml(value) {
+        const div = document.createElement("div");
+        div.textContent = value;
+        return div.innerHTML;
+    }
+
+    async function refresh() {
+        try {
+            showError(null);
+            await loadAuthors();
+            await loadBooks();
+        } catch (error) {
+            showError(error);
+        }
+    }
+
+    document.getElementById("author-form").addEventListener("submit", async event => {
+        event.preventDefault();
+        const data = Object.fromEntries(new FormData(event.target));
+        try {
+            await api("/authors", {
+                method: "POST",
+                body: JSON.stringify({name: data.name, country: data.country || null}),
+            });
+            event.target.reset();
+            await refresh();
+        } catch (error) {
+            showError(error);
+        }
+    });
+
+    document.getElementById("book-form").addEventListener("submit", async event => {
+        event.preventDefault();
+        const data = Object.fromEntries(new FormData(event.target));
+        try {
+            await api("/books", {
+                method: "POST",
+                body: JSON.stringify({
+                    title: data.title,
+                    author_id: Number(data.author_id),
+                    year: data.year ? Number(data.year) : null,
+                    total_copies: Number(data.total_copies || 1),
+                }),
+            });
+            event.target.reset();
+            await refresh();
+        } catch (error) {
+            showError(error);
+        }
+    });
+
+    document.getElementById("books").addEventListener("click", async event => {
+        if (!event.target.classList.contains("delete")) return;
+        try {
+            await api(`/books/${event.target.dataset.id}`, {method: "DELETE"});
+            await refresh();
+        } catch (error) {
+            showError(error);
+        }
+    });
+
+    refresh();
+</script>
+</body>
+</html>
