@@ -9,11 +9,19 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "boto3>=1.43.115",
+    "boto3-stubs~=1.43.115",
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
+    "loguru>=0.7.3",
     "psycopg>=3.3.6",
+    "python-dotenv>=1.2.4",
     "uvicorn>=0.54.0",
 ]
 
 [project.scripts]
 cad = "cad:main"
+
+[dependency-groups]
+dev = [
+    "black>=26.10.1",
+]
