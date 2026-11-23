@@ -1,0 +1,29 @@
+version = 0.1
+
+[default.global.parameters]
+region = "eu-central-1"
+
+[ecr.deploy.parameters]
+stack_name = "sis3-ecr"
+template_file = "ecr.yaml"
+resolve_s3 = true
+s3_prefix = "sis3-ecr"
+region = "eu-central-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+
+[ecr.global.parameters]
+region = "eu-central-1"
+
+[network.deploy.parameters]
+stack_name = "sis3-network"
+resolve_s3 = true
+s3_prefix = "sis3-network"
+region = "eu-central-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+
+[network.global.parameters]
+region = "eu-central-1"

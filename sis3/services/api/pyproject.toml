@@ -1,0 +1,10 @@
+[project]
+name = "api"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "boto3>=1.44.9",
+    "fastapi>=0.165.0",
+    "pydantic[email]>=2.14.4",
+    "uvicorn>=0.54.0",
+]
