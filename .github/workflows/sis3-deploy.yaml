@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - "sis3/**"
-      - ".github/workflows/sis3-deploy.yml"
+      - ".github/workflows/sis3-deploy.yaml"
 
 permissions:
   id-token: write
