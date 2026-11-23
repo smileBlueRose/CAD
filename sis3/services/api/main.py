@@ -51,7 +51,6 @@ def ensure_email_identity(email: str) -> str:
 def health() -> dict:
     return {"status": "ok"}
 
-
 @app.post("/titles/{title_name}/watchers", status_code=status.HTTP_201_CREATED)
 def subscribe(title_name: str, request: SubscribeRequest) -> dict:
     email = normalize_email(request.email)
