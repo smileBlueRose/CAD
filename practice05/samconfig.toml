@@ -1,0 +1,14 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "practice05"
+resolve_s3 = true
+s3_prefix = "practice05"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+parameter_overrides = "SenderEmail=example@gmail.com"
+
+[default.global.parameters]
+region = "eu-central-1"
+
