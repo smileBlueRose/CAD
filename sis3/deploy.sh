@@ -10,7 +10,8 @@ PREFIX="$1"
 ENV="$2"
 SENDER_EMAIL="$3"
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(dirname "$0")"
+cd "$SCRIPT_DIR"
 
 if [ -n "$(git status --porcelain -- services/api)" ]; then
   echo "services/api has uncommitted changes, commit them first" >&2
@@ -34,7 +35,7 @@ REPOSITORY_URI="$(aws cloudformation describe-stacks \
   --output text)"
 REGISTRY="${REPOSITORY_URI%%/*}"
 REPOSITORY_NAME="${REPOSITORY_URI#*/}"
-IMAGE_TAG="$(git rev-parse --short HEAD)"
+IMAGE_TAG="$(git log -1 --format=%h -- services/api)"
 IMAGE_URI="${REPOSITORY_URI}:${IMAGE_TAG}"
 
 if aws ecr describe-images \

@@ -1,0 +1,48 @@
+name: sis3-deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sis3/**"
+      - ".github/workflows/sis3-deploy.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pipx install ruff && pipx install cfn-lint
+      - run: ruff check sis3
+      - run: cfn-lint --non-zero-exit-code error sis3/template.yaml sis3/network.yaml sis3/ecr.yaml
+
+  test:
+    runs-on: ubuntu-latest
+    env:
+      WATCHERS_TABLE: test
+      AWS_DEFAULT_REGION: eu-central-1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --directory sis3/services/api python -m pytest
+
+  deploy:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.DEPLOY_ROLE_ARN }}
+          aws-region: eu-central-1
+      - run: bash sis3/deploy.sh sis3 prod "${{ vars.SENDER_EMAIL }}"
